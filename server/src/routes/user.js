@@ -4,6 +4,7 @@ import { accessVerify } from "../middlewares";
 
 const router = Router();
 
-router.get("/", accessVerify, UserController.getUser);
+router.get("/me", accessVerify, UserController.getUser);
+router.get("/", accessVerify, UserController.getUsers);
 
 export default router;

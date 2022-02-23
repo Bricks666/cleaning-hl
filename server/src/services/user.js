@@ -11,4 +11,13 @@ export class UserServices {
 			login
 		);
 	}
+	static async getUsers(login, org) {
+		return await Fabric.transaction(
+			org,
+			login,
+			CONTRACTS.USERS,
+			TRANSACTIONS.USERS.GET_ALL,
+			login
+		);
+	}
 }

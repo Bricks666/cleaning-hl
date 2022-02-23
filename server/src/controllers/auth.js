@@ -5,8 +5,16 @@ export class AuthController {
 		try {
 			const { login } = req.body;
 			const user = await AuthServices.login(login);
-			const accessToken = Tokens.sign(user);
-			const refreshToken = Tokens.sign(user);
+			const accessToken = Tokens.sign({
+				login: user.login,
+				role: user.role,
+				org: "org1",
+			});
+			const refreshToken = Tokens.sign({
+				login: user.login,
+				role: user.role,
+				org: "org1",
+			});
 			res.json({ accessToken, refreshToken, user });
 		} catch (e) {
 			next(e);

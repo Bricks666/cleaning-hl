@@ -16,21 +16,13 @@ app.use("/", router);
 app.use(errorHandler);
 
 app.listen(PORT, async () => {
-	/* const login = "admin";
+	const login = "admin";
 	const org = "org1";
 	const password = "adminpw";
 	await Fabric.loginIdentity(login, password, org);
-	await Fabric.transaction(
-		org,
-		login,
-		CONTRACTS.USERS,
-		TRANSACTIONS.USERS.INIT
+	const inits = Object.keys(CONTRACTS).map((key) =>
+		Fabric.transaction(org, login, CONTRACTS[key], TRANSACTIONS[key].INIT)
 	);
-	await Fabric.transaction(
-		org,
-		login,
-		CONTRACTS.OFFERS,
-		TRANSACTIONS.OFFERS.INIT
-	); */
+	await Promise.all(inits);
 	console.log("OR");
 });

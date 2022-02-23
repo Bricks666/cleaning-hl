@@ -4,6 +4,7 @@ export const CHAINCODE = "cleaning";
 export const CONTRACTS = {
 	USERS: "UsersContract",
 	OFFERS: "CleaningContract",
+	VOTES: "OfferContract",
 };
 
 export const TRANSACTIONS = {
@@ -18,5 +19,10 @@ export const TRANSACTIONS = {
 		ADD: "addOfferCleaning",
 		ACCEPT: "acceptOfferCleaning",
 		CANCEL: "cancelOfferCleaning",
+	},
+	VOTES: {
+		INIT: "initializationContract",
+		ADD: "addOfferToWorker",
+		VOTE_FOR: "voteFor",
 	},
 };
