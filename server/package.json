@@ -6,7 +6,8 @@
 	"scripts": {
 		"build": "rollup -c",
 		"watch": "rollup -c -w",
-		"dev": "nodemon ./dist/index.js"
+		"dev": "nodemon ./dist/index.js",
+    "start": "npm run build && node ./dist/index.js"
 	},
 	"keywords": [],
 	"author": "",

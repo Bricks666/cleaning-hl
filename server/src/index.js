@@ -10,7 +10,12 @@ const app = express();
 
 app.use(json());
 app.use(cookieParser());
-app.use(cors());
+app.use(
+	cors({
+		origin: /localhost:300[012345]/,
+		credentials: true,
+	})
+);
 app.use("/", router);
 
 app.use(errorHandler);
@@ -23,6 +28,8 @@ app.listen(PORT, async () => {
 	const inits = Object.keys(CONTRACTS).map((key) =>
 		Fabric.transaction(org, login, CONTRACTS[key], TRANSACTIONS[key].INIT)
 	);
+	inits.push(Fabric.registerIdentity("worker", "0000"));
+	inits.push(Fabric.registerIdentity("user", "0000"));
 	await Promise.all(inits);
 	console.log("OR");
 });

@@ -15,9 +15,12 @@ const generateKeys = () => {
 	});
 
 	console.log(process.cwd());
-	writeFileSync(["..", "configs", "public_key.pem"].join("/"), keys.publicKey);
 	writeFileSync(
-		["..", "configs", "private_key.pem"].join("/"),
+		["..", "..", "configs", "public_key.pem"].join("/"),
+		keys.publicKey
+	);
+	writeFileSync(
+		["..", "..", "configs", "private_key.pem"].join("/"),
 		keys.privateKey
 	);
 };

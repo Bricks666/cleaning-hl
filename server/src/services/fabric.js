@@ -16,7 +16,7 @@ export class Fabric {
 		return await Wallets.newFileSystemWallet(`./wallets/${org}/${login}`);
 	}
 	static async connectGateway(org, login) {
-		const wallet = this.createWallet(org, login);
+		const wallet = await this.createWallet(org, login);
 		const gateway = new Gateway();
 		const connectionOptions = CPMap[org];
 		await gateway.connect(connectionOptions, {
@@ -74,8 +74,8 @@ export class Fabric {
 			enrollmentID: login,
 			enrollmentSecret: password,
 		});
-		const wallet = await this.createWallet();
-		await wallet.put(login, createIdentity(org, enrollment));
+		const wallet = await this.createWallet(org, login);
+		await wallet.put(login, this.createIdentity(org, enrollment));
 	}
 	static async getAdmin(org) {
 		const login = "admin";
@@ -88,7 +88,7 @@ export class Fabric {
 		return await provider.getUserContext(identity, login);
 	}
 	static async registerIdentity(login, password, org = "org1") {
-		const admin = this.getAdmin(org);
+		const admin = await this.getAdmin(org);
 		const ca = await this.createCA(org);
 		await ca.register(
 			{

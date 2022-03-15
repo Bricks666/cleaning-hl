@@ -8,42 +8,46 @@ class OfferCleaningList {
 		this.ctx = ctx;
 		this.KEY = "offersCleaning";
 	}
-	async createOffers(offers) {
+	async setOffers(offers) {
 		const DataOffers = Buffer.from(JSON.stringify(offers));
 		await this.ctx.stub.putState(this.KEY, DataOffers);
 	}
 	async addOffer(offer) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
 		offers.push(offer);
-		const DataOffers = Buffer.from(JSON.stringify(offers));
-		await this.ctx.stub.putState(this.KEY, DataOffers);
+		await this.setOffers(offers);
 	}
 	async getOffers() {
 		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
-		return offers;
+		return JSON.parse(OffersList.toString());
 	}
 	async getOffer(offerId) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
 		return offers[offerId];
 	}
+	async getSendedOffers(login) {
+		const offers = await this.getOffers();
+		return offers.filter((offer) => offer.loginUser === login);
+	}
+	async getReceivedOffers(login) {
+		const offers = await this.getOffers();
+
+		return offers.filter((offer) => offer.loginWorker === login);
+	}
 	async finishOffer(offerId) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
+
 		offers[offerId].finished = true;
-		const DataOffers = Buffer.from(JSON.stringify(offers));
-		await this.ctx.stub.putState(this.KEY, DataOffers);
+		await this.setOffers(offers);
 	}
 }
 
 class OfferCleaning {
-	constructor(id, loginUser, loginWorker, money) {
+	constructor(id, loginUser, loginWorker, carId, money) {
 		this.id = id;
-		/* Какую машину моем и где вообще машины */
 		this.loginUser = loginUser;
 		this.loginWorker = loginWorker;
+		this.carId = carId;
 		this.money = money;
 		this.finished = false;
 	}
@@ -62,60 +66,69 @@ class CleaningContract extends Contract {
 		return new OfferCleaningCTX();
 	}
 	async initializationContract(ctx) {
-		offers = [];
-		await ctx.offerCleaningList.createOffers(offers);
+		const offers = [];
+		await ctx.offerCleaningList.setOffers(offers);
 		return offers;
 	}
-	/* Функция на получение всех предложений */
-	async addOfferCleaning(ctx, loginUser, loginWorker, money) {
-		const users = await ctx.userList.getUsers();
-		if (!users[loginUser]) {
+	async addOfferCleaning(ctx, loginUser, loginWorker, carId, money) {
+		const client = await ctx.userList.getUser(loginUser);
+		const worker = await ctx.userList.getUser(loginWorker);
+		if (!client || !worker) {
 			return new Error("You are not registered");
 		}
-		if (users[loginWorker].role !== "Worker") {
+		if (worker.role !== "Worker") {
 			return new Error("The loginWorker is not login worker");
+		}
+		if (client.cars[carId].onClean !== false) {
+			return new Error("The car is on cleaning");
 		}
 		const offers = await ctx.offerCleaningList.getOffers();
 		const offer = new OfferCleaning(
 			offers.length,
 			loginUser,
 			loginWorker,
+			carId,
 			money
 		);
 		await ctx.offerCleaningList.addOffer(offer);
 		await ctx.userList.sendMoney(loginUser, money);
+		await ctx.userList.CarToCleaning(loginUser, carId);
 		return offer;
 	}
 	async acceptOfferCleaning(ctx, login, offerId) {
 		//логин - работник, котрый прнимает/отклоняет
-		const users = await ctx.userList.getUsers();
-		if (users[login].role !== "Worker") {
+		const user = await ctx.userList.getUser(login);
+		if (user.role !== "Worker") {
 			return new Error("You are not worker");
 		}
-		const offers = await ctx.offerCleaningList.getOffers();
-		if (offers[offerId].finished === true) {
+		const offer = await ctx.offerCleaningList.getOffer(offerId);
+		if (offer.finished === true) {
 			return new Error("The offer is finished");
 		}
-		await ctx.userList.recieveMoney(login, offers[offerId].money);
+		await ctx.userList.recieveMoney(login, offer.money);
 		await ctx.offerCleaningList.finishOffer(offerId);
-		/* Нужно возвращение предложения */
+		await ctx.userList.CarNotToCleaning(offer.loginUser, offer.carId);
 	}
 	async cancelOfferCleaning(ctx, login, offerId) {
 		//логин - работник, котрый прнимает/отклоняет
-		const users = await ctx.userList.getUsers();
-		if (users[login].role !== "Worker") {
+		const user = await ctx.userList.getUser(login);
+
+		if (user.role !== "Worker") {
 			return new Error("You are not worker");
 		}
-		const offers = await ctx.offerCleaningList.getOffers();
-		if (offers[offerId].finished === true) {
+		const offer = await ctx.offerCleaningList.getOffer(offerId);
+		if (offer.finished === true) {
 			return new Error("The offer is finished");
 		}
-		await ctx.userList.recieveMoney(
-			offers[offerId].loginUser,
-			offers[offerId].money
-		);
+		await ctx.userList.recieveMoney(offer.loginUser, offer.money);
 		await ctx.offerCleaningList.finishOffer(offerId);
-		/* Нужно возвращение предложения */
+		await ctx.userList.CarNotToCleaning(offer.loginUser, offer.carId);
+	}
+	async getSendedOffers(ctx, login) {
+		return await ctx.offerCleaningList.getSendedOffers(login);
+	}
+	async getReceivedOffers(ctx, login) {
+		return await ctx.offerCleaningList.getReceivedOffers(login);
 	}
 }
 

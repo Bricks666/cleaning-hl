@@ -1,3 +1,4 @@
+import { COOKIE_NAME } from "../configs";
 import { AuthServices, Tokens } from "../services";
 
 export class AuthController {
@@ -14,6 +15,10 @@ export class AuthController {
 				login: user.login,
 				role: user.role,
 				org: "org1",
+			});
+			res.cookie(COOKIE_NAME, refreshToken, {
+				httpOnly: true,
+				maxAge: 30 * 24 * 60 * 60 * 1000,
 			});
 			res.json({ accessToken, refreshToken, user });
 		} catch (e) {

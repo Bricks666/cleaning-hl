@@ -1,11 +1,15 @@
 import { sign, verify } from "jsonwebtoken";
-import PUBLIC_KEY from "../configs/public_key.pem";
-import PRIVATE_KEY from "../configs/private_key.pem";
+import { readFileSync } from "fs";
+const PUBLIC_KEY = readFileSync("./configs/public_key.pem", "utf8");
+const PRIVATE_KEY = readFileSync("./configs/private_key.pem", "utf8");
 
 export class Tokens {
-	static sign(payload) {
+	static sign(payload, time = "10m") {
 		try {
-			return sign(payload, PRIVATE_KEY);
+			return sign(payload, PRIVATE_KEY, {
+				algorithm: "RS256",
+				expiresIn: time,
+			});
 		} catch (e) {
 			return null;
 		}

@@ -1,16 +1,41 @@
 import { ApiError, OffersServices } from "../services";
 
 export class OfferControllers {
+	static async getSendedOffers(req, res, next) {
+		try {
+			const { user } = req.body;
+			const offers = await OffersServices.getSendedOffers(user.login, user.org);
+			console.log(offers);
+			return res.json({ offers });
+		} catch (e) {
+			next(e);
+		}
+	}
+	static async getReceivedOffers(req, res, next) {
+		try {
+			const { user } = req.body;
+			const offers = await OffersServices.getReceivedOffers(
+				user.login,
+				user.org
+			);
+			console.log(offers);
+
+			return res.json({ offers });
+		} catch (e) {
+			next(e);
+		}
+	}
 	static async addOffer(req, res, next) {
 		try {
-			const { user, worker, money } = req.body;
+			const { user, worker, money, carId } = req.body;
 			if (!worker || !money) {
 				throw ApiError.BadRequest("Worker and money");
 			}
 			const offer = await OffersServices.addOffer(
 				user.login,
 				user.org,
-				worker,
+        worker,
+				carId,
 				money
 			);
 			res.json({ offer });

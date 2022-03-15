@@ -8,14 +8,7 @@ class OfferToWorkerList {
 		this.ctx = ctx;
 		this.KEY = "offersToWorker";
 	}
-	async createOffers(offers) {
-		const DataOffers = Buffer.from(JSON.stringify(offers));
-		await this.ctx.stub.putState(this.KEY, DataOffers);
-	}
-	async addOffer(offer) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
-		offers.push(offer);
+	async setOffers(offers) {
 		const DataOffers = Buffer.from(JSON.stringify(offers));
 		await this.ctx.stub.putState(this.KEY, DataOffers);
 	}
@@ -25,31 +18,41 @@ class OfferToWorkerList {
 		return offers;
 	}
 	async getOffer(offerId) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
 		return offers[offerId];
 	}
+	async addOffer(offer) {
+		const offers = await this.getOffers();
+		offers.push(offer);
+		await this.setOffers(offers);
+	}
+
 	async finishOffer(offerId) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
+
 		offers[offerId].finished = true;
-		const DataOffers = Buffer.from(JSON.stringify(offers));
-		await this.ctx.stub.putState(this.KEY, DataOffers);
+		await this.setOffers(offers);
 	}
 	async voteFor(login, offerId) {
-		const OffersList = await this.ctx.stub.getState(this.KEY);
-		const offers = JSON.parse(OffersList.toString());
+		const offers = await this.getOffers();
+
 		offers[offerId].voteFor.push(login);
-		const DataOffers = Buffer.from(JSON.stringify(offers));
-		await this.ctx.stub.putState(this.KEY, DataOffers);
+		await this.setOffers(offers);
+	}
+	async voteAgainst(login, offerId) {
+		const offers = await this.getOffers();
+
+		offers[offerId].voteAgainst.push(login);
+		await this.setOffers(offers);
 	}
 }
 
 class OfferToWorker {
-	constructor(id, loginToWorker) {
+	constructor(id, loginToWorker, offererLogin) {
 		this.id = id;
 		this.loginToWorker = loginToWorker;
-		this.voteFor = [];
+		this.voteFor = [offererLogin];
+		this.voteAgainst = [];
 		this.finished = false;
 	}
 }
@@ -67,45 +70,76 @@ class OfferContract extends Contract {
 		return new OfferToWorkerCTX();
 	}
 	async initializationContract(ctx) {
-		offers = [];
-		await ctx.offerToWorkerList.createOffers(offers);
+		const offers = [];
+		await ctx.offerToWorkerList.setOffers(offers);
 		return offers;
 	}
-	/* Функция на получение всех голосований */
-	async addOfferToWorker(ctx, login) {
-		const users = await ctx.userList.getUsers();
-		if (users[login].onOffer === true) {
-			return new Error("The user is on offer");
+	async addOfferToWorker(ctx, offererLogin, candidateLogin) {
+		const offerer = await ctx.userList.getUser(offererLogin);
+		const candidate = await ctx.userList.getUser(candidateLogin);
+		if (candidate.onOffer === true) {
+			return false;
 		}
-		if (users[login].role === "Worker") {
-			return new Error("The user is worker");
+		if (candidate.role === "Worker") {
+			return false;
+		}
+		if (offerer.role !== "Worker") {
+			return false;
 		}
 		const offers = await ctx.offerToWorkerList.getOffers();
-		const offer = new OfferToWorker(offers.length, login);
+		const offer = new OfferToWorker(
+			offers.length,
+			candidateLogin,
+			offererLogin
+		);
 		await ctx.offerToWorkerList.addOffer(offer);
+		await ctx.userList.addOfferToWorker(candidateLogin);
 		return offer;
 	}
 	async voteFor(ctx, login, offerId) {
-		const users = await ctx.userList.getUsers();
-		if (users[login].role !== "Worker") {
-			return new Error("You are not worker");
+		const user = await ctx.userList.getUser(login);
+		if (user.role !== "Worker") {
+			return false;
 		}
-		const offers = await ctx.offerToWorkerList.getOffers();
-		if (offers[offerId].voteFor.indexOf(login) !== -1) {
-			return new Error("You are already voted");
+		const offer = await ctx.offerToWorkerList.getOffer(offerId);
+		if (offer.voteFor.indexOf(login) !== -1) {
+			return false;
 		}
-		const userArray = Object.values(users);
-		const countWorkers = userArray.filter(
-			(user) => user.role === "Worker"
-		).length;
-		if (countWorkers / (offers[offerId].voteFor.length + 1) < 2) {
-			await ctx.userList.addWorker(offers[offerId].loginToWorker);
+		if (offer.voteAgainst === login) {
+			return false;
+		}
+		const workersCount = (await ctx.userList.getWorkers()).length;
+		if (workersCount / (offer.voteFor.length + 1) < 2) {
+			await ctx.userList.addWorker(offer.loginToWorker);
 			await ctx.offerToWorkerList.finishOffer(offerId);
+			await ctx.offerToWorkerList.removeOfferToWorker(offer.loginToWorker);
+			return true;
 		}
 		await ctx.offerToWorkerList.voteFor(login, offerId);
-		/* Возвращать обновленное состояние */
+		return false;
 	}
-	/* Голосовать против */
+	async voteAgainst(ctx, login, offerId) {
+		const user = await ctx.userList.getUser(login);
+		if (user.role !== "Worker") {
+			return false;
+		}
+		const offer = await ctx.offerToWorkerList.getOffer(offerId);
+		if (offer.voteFor.indexOf(login) !== -1) {
+			return false;
+		}
+		if (offer.voteAgainst == login) {
+			return false;
+		}
+
+		await ctx.offerToWorkerList.voteAgainst(login, offerId);
+		await ctx.offerToWorkerList.finishOffer(offerId);
+		await ctx.offerToWorkerList.removeOfferToWorker(offer.loginToWorker);
+
+		return true;
+	}
+	async getOffers(ctx) {
+		return await ctx.offerToWorkerList.getOffers();
+	}
 }
 
 module.exports.OfferContract = OfferContract;

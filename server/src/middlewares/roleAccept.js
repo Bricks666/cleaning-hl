@@ -4,7 +4,7 @@ export const roleAccept = (role) => {
 	return (req, res, next) => {
 		try {
 			const { user } = req.body;
-			if (!user.role === role) {
+			if (user.role !== role) {
 				throw ApiError.NoAccess("Your role invalid");
 			}
 			next();

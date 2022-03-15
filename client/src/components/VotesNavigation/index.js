@@ -1,0 +1,1 @@
+export { VotesNavigation } from "./VotesNavigation";

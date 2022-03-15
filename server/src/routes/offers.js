@@ -4,6 +4,8 @@ import { accessVerify, roleAccept } from "../middlewares";
 
 const router = Router();
 
+router.get("/sended", accessVerify, OfferControllers.getSendedOffers);
+router.get("/received", accessVerify, OfferControllers.getReceivedOffers);
 router.put("/add", accessVerify, OfferControllers.addOffer);
 router.post(
 	"/:offerId/accept",
