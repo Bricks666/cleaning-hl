@@ -4,7 +4,8 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"start": "fabric-chaincode-node start"
+		"start": "npm run build && fabric-chaincode-node start",
+		"build": "rollup -c ./rollup.config.js"
 	},
 	"keywords": [],
 	"author": "",
@@ -12,5 +13,16 @@
 	"dependencies": {
 		"fabric-contract-api": "^2.2.2",
 		"fabric-shim": "^2.2.2"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.18.10",
+		"@babel/preset-env": "^7.18.10",
+		"@babel/preset-typescript": "^7.18.6",
+		"@rollup/plugin-babel": "^5.3.1",
+		"@rollup/plugin-commonjs": "^22.0.2",
+		"@rollup/plugin-node-resolve": "^13.3.0",
+		"rollup": "^2.77.2",
+		"rollup-plugin-typescript2": "^0.32.1",
+		"typescript": "^4.7.4"
 	}
 }
